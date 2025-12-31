@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  planner:
+    build: .
+    environment:
+      - AGENT_ROLE=planner
+      - PORT=8000
+    command: uvicorn agent.server.app:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./agent:/app/agent
+      - ./memory_store:/app/memory_store
+    networks:
+      - agent-net
+
+  executor:
+    build: .
+    environment:
+      - AGENT_ROLE=executor
+      - PORT=8000
+    command: uvicorn agent.server.app:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./agent:/app/agent
+      - ./memory_store:/app/memory_store
+      - ./workspace_data:/workspace  # Sandbox for file operations
+    networks:
+      - agent-net
+
+  critic:
+    build: .
+    environment:
+      - AGENT_ROLE=critic
+      - PORT=8000
+    command: uvicorn agent.server.app:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./agent:/app/agent
+      - ./memory_store:/app/memory_store
+    networks:
+      - agent-net
+
+  coordinator:
+    build: .
+    environment:
+      - PLANNER_URL=http://planner:8000
+      - EXECUTOR_URL=http://executor:8000
+      - CRITIC_URL=http://critic:8000
+    command: python -m agent.core.coordinator
+    volumes:
+      - ./agent:/app/agent
+    depends_on:
+      - planner
+      - executor
+      - critic
+    networks:
+      - agent-net
+
+networks:
+  agent-net:
+    driver: bridge
