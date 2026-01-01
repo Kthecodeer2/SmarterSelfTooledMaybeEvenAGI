@@ -2,7 +2,7 @@ from enum import Enum
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 class Role(str, Enum):
     PLANNER = "planner"
@@ -21,7 +21,7 @@ class MessageType(str, Enum):
 
 class AgentMessage(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     sender: Role
     receiver: Role
     type: MessageType

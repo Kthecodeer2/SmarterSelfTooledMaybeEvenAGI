@@ -13,14 +13,25 @@ This system implements a self-learning, autonomous agent architecture composed o
 ### 2. Communication
 - Agents communicate via HTTP (FastAPI) using a strict JSON schema (`AgentMessage`).
 - The **Coordinator** acts as the message bus and state manager.
+- **Fallback Mechanisms**: 
+    - The Coordinator implements exponential backoff retries for agent communication (up to 3 attempts).
+    - Agents implement internal retries for LLM generation and JSON parsing to handle transient model failures.
 
 ### 3. Memory & Learning
 - **ChromaDB** is used for long-term vector memory.
-- **Self-Learning Loop**: Success/Failure patterns are stored as "lessons" in memory. Future plans query this memory to avoid repeating mistakes.
+- **Self-Learning Loop**: 
+    - **Concept**: The system treats every mission as a data point.
+    - **Mechanism**:
+        1. When a plan succeeds, the Planner stores the strategy and goal in ChromaDB with a "lesson" tag.
+        2. When a plan fails (rejected by Critic or execution error), the failure reason is stored.
+        3. **Context Injection**: Before generating a new plan, the Planner queries ChromaDB for similar past goals.
+        4. **Outcome**: If the Planner sees a similar past failure, it avoids that strategy. If it sees a success, it mimics it.
+    - This allows the system to "learn" from mistakes without model fine-tuning.
 
 ### 4. Infrastructure
 - **Fully Docked**: Each agent runs in its own container (`python:3.14-slim` base).
 - **Isolation**: The Executor acts within a specific workspace volume, isolated from the host system except for defined bind mounts.
+- **Updates**: When `Dockerfile` or dependencies change, run `docker-compose build` to rebuild the images. The generic `agent` image is shared across services but configured via environment variables.
 
 ## System Diagram
 
